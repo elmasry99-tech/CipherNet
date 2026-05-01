@@ -8,6 +8,7 @@ export const ROLE_LABELS = {
   oso: "Organization Security Officer",
   internal: "Internal Secure End-User",
   guest: "Guest User",
+  general: "General User",
 };
 
 export const ROLE_DESCRIPTIONS = {
@@ -19,6 +20,8 @@ export const ROLE_DESCRIPTIONS = {
     "Create secure rooms, collaborate, send files, and manage invited participants.",
   guest:
     "Join with invite verification, wait for approval, and access room-scoped communication.",
+  general:
+    "Sign up and log in freely without organization affiliation or approval.",
 };
 
 export const APP_NAV = {
@@ -41,5 +44,10 @@ export const APP_NAV = {
   ],
   guest: [
     { label: "Guest Session", href: ROUTES.guest },
+  ],
+  general: [
+    { label: "Dashboard", href: ROUTES.dashboard },
+    { label: "Rooms", href: ROUTES.rooms },
+    { label: "Profile", href: ROUTES.profile },
   ],
 };

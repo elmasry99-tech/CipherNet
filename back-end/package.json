@@ -10,11 +10,14 @@
     }
   ],
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cap": "^0.2.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "eetase": "^7.0.1",
     "express": "^4.16.3",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.6.1",
     "morgan": "^1.7.0",
     "multer": "^2.1.1",
     "nodemon": "^3.1.10",
@@ -33,6 +36,7 @@
   ],
   "readmeFilename": "README.md",
   "scripts": {
+    "dev": "nodemon server.js",
     "start": "node server.js",
     "start:watch": "./node_modules/nodemon/bin/nodemon.js server.js",
     "start:docker": "./node_modules/nodemon/bin/nodemon.js /usr/src/app/server.js"

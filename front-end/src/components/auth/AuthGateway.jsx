@@ -36,7 +36,7 @@ export function AuthGateway() {
   const { signIn, addPendingAccountRequest, setSignupPendingRole, state } = useSessionState();
   const [mode, setMode] = useState("login");
   const [selectedRole, setSelectedRole] = useState("internal");
-  const visibleRoles = mode === "signup" ? roles.filter((role) => role.id !== "guest" && role.id !== "admin") : roles;
+  const visibleRoles = mode === "signup" ? roles.filter((role) => role.id !== "guest" && role.id !== "admin") : roles.filter((role) => role.id !== "admin");
   const [organizationQuery, setOrganizationQuery] = useState("");
   const [showOrganizationMenu, setShowOrganizationMenu] = useState(false);
   const [errors, setErrors] = useState({});
@@ -89,7 +89,15 @@ export function AuthGateway() {
       if (selectedRole === "internal" && !formValues.organizationCode.trim()) {
         nextErrors.organizationCode = "Organization invite code is required.";
       }
-      if (!formValues.password.trim()) nextErrors.password = "Password is required.";
+      if (!formValues.password.trim()) {
+        nextErrors.password = "Password is required.";
+      } else if (formValues.password.length < 8) {
+        nextErrors.password = "Password must be at least 8 characters.";
+      } else if (!/[A-Z]/.test(formValues.password)) {
+        nextErrors.password = "Password must include at least one uppercase letter.";
+      } else if (!/[^a-zA-Z0-9]/.test(formValues.password)) {
+        nextErrors.password = "Password must include at least one special character.";
+      }
       if (!formValues.confirmPassword.trim()) nextErrors.confirmPassword = "Confirm password is required.";
       if (formValues.password.trim() && formValues.confirmPassword.trim() && formValues.password !== formValues.confirmPassword) {
         nextErrors.confirmPassword = "Passwords do not match.";
@@ -104,7 +112,7 @@ export function AuthGateway() {
     event.preventDefault();
     if (!validateForm()) return;
 
-    if (mode === "signup" && (selectedRole === "oso" || selectedRole === "internal")) {
+    if (mode === "signup" && (selectedRole === "oso" || selectedRole === "internal") && selectedRole !== "general") {
       addPendingAccountRequest({
         name: formValues.fullName.trim(),
         email: formValues.workEmail.trim(),
@@ -173,7 +181,7 @@ export function AuthGateway() {
                 onClick={() => {
                   setMode("signup");
                   if (selectedRole === "guest" || selectedRole === "admin") {
-                    setSelectedRole("internal");
+                    setSelectedRole("general");
                   }
                   setErrors({});
                 }}
