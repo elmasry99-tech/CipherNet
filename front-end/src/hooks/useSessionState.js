@@ -51,33 +51,35 @@ const defaultState = {
 };
 
 export function useSessionState() {
-  const [state, setState] = useState(() => {
-    if (typeof window === "undefined") return defaultState;
+  const [state, setState] = useState(defaultState);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
     try {
       const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
-      if (!raw) return defaultState;
-      const parsed = JSON.parse(raw);
-      return {
-        ...defaultState,
-        ...parsed,
-        profiles: parsed.profiles || defaultProfiles,
-        organizations: parsed.organizations || organizationRows,
-        officerManagedUsers: parsed.officerManagedUsers || officerUsers,
-        employeeJoinRequests: parsed.employeeJoinRequests || pendingEmployeeRequests,
-        policySettings: parsed.policySettings || defaultState.policySettings,
-        retentionSettings: parsed.retentionSettings || defaultState.retentionSettings,
-        messageRateLimit: parsed.messageRateLimit || defaultState.messageRateLimit,
-        adminAuditLogs: parsed.adminAuditLogs || defaultState.adminAuditLogs,
-        messagesByRoom: {
-          ...baseMessages,
-          ...(parsed.messagesByRoom || {}),
-        },
-      };
-    } catch {
-      return defaultState;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setState({
+          ...defaultState,
+          ...parsed,
+          profiles: parsed.profiles || defaultProfiles,
+          organizations: parsed.organizations || organizationRows,
+          officerManagedUsers: parsed.officerManagedUsers || officerUsers,
+          employeeJoinRequests: parsed.employeeJoinRequests || pendingEmployeeRequests,
+          policySettings: parsed.policySettings || defaultState.policySettings,
+          retentionSettings: parsed.retentionSettings || defaultState.retentionSettings,
+          messageRateLimit: parsed.messageRateLimit || defaultState.messageRateLimit,
+          adminAuditLogs: parsed.adminAuditLogs || defaultState.adminAuditLogs,
+          messagesByRoom: {
+            ...baseMessages,
+            ...(parsed.messagesByRoom || {}),
+          },
+        });
+      }
+    } finally {
+      setHydrated(true);
     }
-  });
-  const hydrated = true;
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;
