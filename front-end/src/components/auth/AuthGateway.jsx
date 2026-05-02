@@ -121,9 +121,6 @@ export function AuthGateway() {
       if ((selectedRole === "oso" || selectedRole === "internal") && !organizationQuery.trim()) {
         nextErrors.organizationName = "Organization name is required.";
       }
-      if ((selectedRole === "oso" || selectedRole === "internal") && !selectedOrganization) {
-        nextErrors.organizationName = "Select an existing organization from the list.";
-      }
       if (!formValues.jobTitle.trim()) nextErrors.jobTitle = "Job title is required.";
       if (!formValues.workEmail.trim()) nextErrors.workEmail = "Work email is required.";
       if (!formValues.password.trim()) {
@@ -204,7 +201,7 @@ export function AuthGateway() {
         email: formValues.workEmail.trim(),
         password: formValues.password,
         role: selectedRole,
-        orgId: selectedOrganization?.id || null,
+        orgName: (selectedRole === "oso" || selectedRole === "internal") ? organizationQuery.trim() : undefined,
       };
 
       const result = await signup(payload);
@@ -351,47 +348,17 @@ export function AuthGateway() {
             ) : null}
 
             {mode === "signup" && (selectedRole === "oso" || selectedRole === "internal") ? (
-              <div className="relative">
-                <span className="mb-2 block text-sm font-medium text-[var(--text-main)]">Organization Name</span>
-                <div className="relative">
-                  <input
-                    name="organizationName"
-                    type="text"
-                    value={organizationQuery}
-                    onFocus={() => setShowOrganizationMenu(true)}
-                    onChange={(event) => {
-                      setOrganizationQuery(event.target.value);
-                      setShowOrganizationMenu(true);
-                    }}
-                    placeholder="Type to search or choose an organization"
-                    autoComplete="off"
-                    className={cn(
-                      "h-12 w-full rounded-[14px] border px-4 pr-10 text-sm text-[var(--text-main)] outline-none",
-                      errors.organizationName ? "border-[#bf5460]" : "border-[var(--border-light)]",
-                    )}
-                  />
-                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-soft)]" />
-                </div>
-                {errors.organizationName ? <p className="mt-2 text-sm text-[#bf5460]">{errors.organizationName}</p> : null}
-                {showOrganizationMenu && filteredOrganizations.length ? (
-                  <div className="absolute z-10 mt-2 max-h-56 w-full overflow-auto rounded-[16px] border border-[var(--border-light)] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
-                    {filteredOrganizations.map((organization) => (
-                      <button
-                        key={organization.id}
-                        type="button"
-                        onClick={() => {
-                          setOrganizationQuery(organization.name);
-                          setShowOrganizationMenu(false);
-                          setErrors((current) => ({ ...current, organizationName: "" }));
-                        }}
-                        className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-[var(--text-main)] last:border-b-0 hover:bg-slate-50"
-                      >
-                        {organization.name}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+              <Field
+                label="Organization Name"
+                placeholder="Enter your organization name"
+                name="organizationName"
+                value={organizationQuery}
+                onChange={(event) => {
+                  setOrganizationQuery(event.target.value);
+                  setErrors((current) => ({ ...current, organizationName: "" }));
+                }}
+                error={errors.organizationName}
+              />
             ) : null}
 
             {mode === "signup" ? (

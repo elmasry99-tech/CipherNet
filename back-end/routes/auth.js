@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Organization from '../models/Organization.js';
 import { isNonEmptyString, isStrongPassword, isValidEmail, isValidObjectId } from '../lib/validation.js';
 
 const router = express.Router();
@@ -9,7 +10,7 @@ const router = express.Router();
 // POST /auth/signup
 router.post('/signup', async (req, res) => {
   try {
-    const { name, email, password, role, orgId } = req.body;
+    const { name, email, password, role, orgId, orgName } = req.body;
 
     if (!isNonEmptyString(name) || !isNonEmptyString(email) || !isNonEmptyString(password) || !isNonEmptyString(role)) {
       return res.status(400).json({ error: 'name, email, password, and role are required' });
@@ -30,8 +31,19 @@ router.post('/signup', async (req, res) => {
       });
     }
 
-    if (['oso', 'internal'].includes(role) && !isValidObjectId(orgId)) {
-      return res.status(400).json({ error: 'A valid orgId is required for oso and internal sign-up' });
+    // Resolve organization: accept orgId (legacy) or orgName (free-text, find-or-create)
+    let resolvedOrgId = orgId || null;
+    if (['oso', 'internal'].includes(role)) {
+      if (isNonEmptyString(orgName)) {
+        const trimmedName = orgName.trim();
+        let org = await Organization.findOne({ name: { $regex: new RegExp(`^${trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        if (!org) {
+          org = await Organization.create({ name: trimmedName });
+        }
+        resolvedOrgId = org._id;
+      } else if (!isValidObjectId(orgId)) {
+        return res.status(400).json({ error: 'Organization name is required for oso and internal sign-up' });
+      }
     }
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -51,7 +63,7 @@ router.post('/signup', async (req, res) => {
       email: normalizedEmail,
       passwordHash,
       role,
-      orgId: orgId || null,
+      orgId: resolvedOrgId,
       status,
     });
 
