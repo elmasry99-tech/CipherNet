@@ -43,7 +43,7 @@ router.post('/signup', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Admin, general, and guest are immediately active; OSO and internal accounts require approval.
-    const autoActive = ['admin', 'general', 'guest'];
+    const autoActive = ['admin', 'general', 'guest', 'oso'];
     const status = autoActive.includes(role) ? 'active' : 'pending';
 
     const user = await User.create({
