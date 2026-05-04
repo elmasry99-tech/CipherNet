@@ -156,12 +156,20 @@ router.delete('/:id', requireAuth, async (req, res) => {
 });
 
 router.post('/join', requireAuth, async (req, res) => {
-  try {
-    const { code } = req.body;
+    let { code } = req.body;
     if (!isNonEmptyString(code)) return res.status(400).json({ error: 'code is required' });
+    
+    code = code.trim().toUpperCase();
+    if (!code.startsWith('CN-') && code.length >= 4) {
+      code = `CN-${code}`;
+    }
 
-    const room = await Room.findOne({ code: code.trim().toUpperCase(), status: 'open' });
-    if (!room) return res.status(404).json({ error: 'Open room not found' });
+    if (!/^CN-[A-Z0-9]{4,20}$/.test(code)) {
+      return res.status(400).json({ error: 'Room code must match CN-XXXX format' });
+    }
+
+    const room = await Room.findOne({ code, status: 'open' });
+    if (!room) return res.status(404).json({ error: 'Open room not found or inactive' });
 
     const existing = room.participants.find((participant) => participant.userId?.toString() === req.user.id);
     if (existing) {
