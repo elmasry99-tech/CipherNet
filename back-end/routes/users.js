@@ -108,4 +108,30 @@ router.delete('/me', requireAuth, async (req, res) => {
   }
 });
 
+// DELETE /users/:id  — OSO or admin can delete a user account
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    if (!['oso', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'user.delete',
+      target: req.params.id,
+    });
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

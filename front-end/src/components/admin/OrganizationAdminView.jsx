@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppScaffold } from "@/components/common/AppScaffold";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +14,7 @@ export function OrganizationAdminView({ pathname }) {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [screenError, setScreenError] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const section = state.officerSection;
 
   useEffect(() => {
@@ -104,6 +105,17 @@ export function OrganizationAdminView({ pathname }) {
       setScreenError(error.message);
     }
   }
+
+  const deleteUser = useCallback(async (userId) => {
+    try {
+      await request(`/users/${userId}`, { method: "DELETE" });
+      setUsers((current) => current.filter((u) => (u._id || u.id) !== userId));
+      setConfirmDeleteId(null);
+      setScreenError("");
+    } catch (error) {
+      setScreenError(error.message);
+    }
+  }, [request]);
 
   async function toggleRoomClosed(room) {
     try {
@@ -240,28 +252,34 @@ export function OrganizationAdminView({ pathname }) {
           </Card>
 
           <div className="space-y-3">
-            {managedUsers.map((user) => (
-              <Card key={user._id || user.id} className="p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <p className="text-base font-medium text-[var(--text-main)]">{user.name}</p>
-                    <p className="text-sm text-[var(--text-soft)]">{user.role}</p>
-                    <p className="mt-1 text-xs text-[var(--text-muted)]">{user.email}</p>
+            {managedUsers.map((user) => {
+              const uid = user._id || user.id;
+              return (
+                <Card key={uid} className="p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <p className="text-base font-medium text-[var(--text-main)]">{user.name}</p>
+                      <p className="text-sm text-[var(--text-soft)]">{user.role}</p>
+                      <p className="mt-1 text-xs text-[var(--text-muted)]">{user.email}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill tone={user.status === "disabled" ? "danger" : user.status === "pending" ? "warning" : "active"}>
+                        {user.status}
+                      </StatusPill>
+                      {confirmDeleteId === uid ? (
+                        <>
+                          <span className="text-sm font-medium text-red-600">Delete this user?</span>
+                          <Button variant="danger" onClick={() => deleteUser(uid)}>Yes, Delete</Button>
+                          <Button variant="secondary" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+                        </>
+                      ) : (
+                        <Button variant="danger" onClick={() => setConfirmDeleteId(uid)}>Delete Account</Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusPill tone={user.status === "disabled" ? "danger" : user.status === "pending" ? "warning" : "active"}>
-                      {user.status}
-                    </StatusPill>
-                    <Button
-                      variant="secondary"
-                      onClick={() => updateUserStatus(user._id || user.id, user.status === "disabled" ? "active" : "disabled")}
-                    >
-                      {user.status === "disabled" ? "Activate" : "Disable"}
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         </div>
       ) : null}
