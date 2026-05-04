@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Lock } from "lucide-react";
 import { roles } from "@/features/auth/index";
@@ -34,9 +34,10 @@ function Field({ label, type = "text", placeholder, name, value, onChange, error
 export function AuthGateway() {
   const router = useRouter();
   const { hydrated, state, login, signup, setSignupPendingRole } = useSessionState();
+  const joiningRoomRef = useRef(false);
 
   useEffect(() => {
-    if (hydrated && state.isAuthenticated) {
+    if (hydrated && state.isAuthenticated && !joiningRoomRef.current) {
       router.replace(getDefaultRouteForRole(state.role));
     }
   }, [hydrated, state.isAuthenticated, state.role, router]);
@@ -162,38 +163,43 @@ export function AuthGateway() {
       }
 
       if (mode === "guest") {
-        const generatedEmail = `guest_${Date.now()}@guest.local`;
-        const generatedPassword = `Guest123!${Math.random().toString(36).substring(2, 10)}`;
-        
-        await signup({
-          name: formValues.fullName.trim(),
-          email: generatedEmail,
-          password: generatedPassword,
-          role: "guest",
-        });
+        joiningRoomRef.current = true;
+        try {
+          const generatedEmail = `guest_${Date.now()}@guest.local`;
+          const generatedPassword = `Guest123!${Math.random().toString(36).substring(2, 10)}`;
 
-        const loginResult = await login({
-          email: generatedEmail,
-          password: generatedPassword,
-        });
+          await signup({
+            name: formValues.fullName.trim(),
+            email: generatedEmail,
+            password: generatedPassword,
+            role: "guest",
+          });
 
-        const joinResponse = await fetch("/rooms/join", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${loginResult.token}`,
-          },
-          body: JSON.stringify({ code: formValues.roomCode.trim() }),
-        });
+          const loginResult = await login({
+            email: generatedEmail,
+            password: generatedPassword,
+          });
 
-        if (!joinResponse.ok) {
-          const errData = await joinResponse.json().catch(() => ({}));
-          throw new Error(errData.error || "Invalid room code or room is closed.");
+          const joinResponse = await fetch("/rooms/join", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${loginResult.token}`,
+            },
+            body: JSON.stringify({ code: formValues.roomCode.trim() }),
+          });
+
+          if (!joinResponse.ok) {
+            const errData = await joinResponse.json().catch(() => ({}));
+            throw new Error(errData.error || "Invalid room code or room is closed.");
+          }
+
+          const joinData = await joinResponse.json();
+          router.replace(getRoomRoute(joinData.room.id));
+          return;
+        } finally {
+          joiningRoomRef.current = false;
         }
-
-        const joinData = await joinResponse.json();
-        router.replace(getRoomRoute(joinData.room.id));
-        return;
       }
 
       const payload = {
