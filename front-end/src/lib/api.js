@@ -7,7 +7,7 @@ export function getBackendUrl() {
 }
 
 export function buildBackendUrl(path) {
-  return path;
+  return `/api${path}`;
 }
 
 export async function readJsonResponse(response) {
