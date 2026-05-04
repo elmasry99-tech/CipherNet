@@ -111,16 +111,16 @@ export function RoomsList({ pathname }) {
       pathname={pathname}
       onLogout={signOut}
       actions={
-        state.role !== "guest" && (
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setShowJoinModal(true)}>
-              Join a Room
-            </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setShowJoinModal(true)}>
+            Join a Room
+          </Button>
+          {state.role !== "guest" && (
             <Button variant="dark" onClick={() => setShowCreateModal(true)}>
               Create Room
             </Button>
-          </div>
-        )
+          )}
+        </div>
       }
     >
       {showCreateModal ? (
