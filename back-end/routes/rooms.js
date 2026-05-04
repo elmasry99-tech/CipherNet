@@ -209,4 +209,38 @@ router.post('/:id/admit', requireAuth, async (req, res) => {
   }
 });
 
+router.delete('/:id/participants/:userId', requireAuth, async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid room id' });
+    if (!isValidObjectId(req.params.userId)) return res.status(400).json({ error: 'Invalid userId' });
+
+    const room = await Room.findById(req.params.id);
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+    if (!userCanManageRoom(req.user, room)) return res.status(403).json({ error: 'Not authorized' });
+
+    const participantIndex = room.participants.findIndex(
+      (entry) => entry.userId?.toString() === req.params.userId,
+    );
+    if (participantIndex === -1) return res.status(404).json({ error: 'Participant not found' });
+
+    // Prevent host from removing themselves
+    if (room.participants[participantIndex].role === 'host') {
+      return res.status(400).json({ error: 'Cannot remove the room host' });
+    }
+
+    room.participants.splice(participantIndex, 1);
+    await room.save();
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'room.participant.removed',
+      target: room._id.toString(),
+      meta: { userId: req.params.userId },
+    });
+
+    res.json({ room: serializeRoom(room) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

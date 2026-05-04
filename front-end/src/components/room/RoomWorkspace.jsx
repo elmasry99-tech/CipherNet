@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Users, Video, X } from "lucide-react";
+import { ArrowLeft, Check, Trash2, UserMinus, Users, Video, X } from "lucide-react";
 import { AppScaffold } from "@/components/common/AppScaffold";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { CallPanel } from "@/components/call/CallPanel";
@@ -32,15 +32,16 @@ export function RoomWorkspace({ pathname, roomId }) {
   const [loading, setLoading] = useState(true);
   const [workspaceError, setWorkspaceError] = useState("");
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [messages, setMessages] = useState([]);
 
   useEffect(() => {
     if (!state.hydrated || !state.isAuthenticated) return;
 
     let cancelled = false;
 
-    async function loadRoom() {
+    async function loadRoom(showLoading = false) {
       try {
-        setLoading(true);
+        if (showLoading) setLoading(true);
         const data = await request(`/rooms/${roomId}`);
         if (!cancelled) {
           setRoom(data.room);
@@ -51,15 +52,19 @@ export function RoomWorkspace({ pathname, roomId }) {
           setWorkspaceError(error.message);
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && showLoading) {
           setLoading(false);
         }
       }
     }
 
-    loadRoom();
+    loadRoom(true);
+
+    const pollInterval = setInterval(() => loadRoom(false), 5000);
+
     return () => {
       cancelled = true;
+      clearInterval(pollInterval);
     };
   }, [request, roomId, state.hydrated, state.isAuthenticated]);
 
@@ -71,7 +76,7 @@ export function RoomWorkspace({ pathname, roomId }) {
   const canManageRoom = useMemo(() => {
     return state.role === "admin"
       || state.role === "oso"
-      || room?.hostId === state.user?.id;
+      || room?.hostId?.toString() === state.user?.id;
   }, [room?.hostId, state.role, state.user?.id]);
 
   async function updateParticipantStatus(userId, status) {
@@ -82,6 +87,28 @@ export function RoomWorkspace({ pathname, roomId }) {
       });
       setRoom(data.room);
       setWorkspaceError("");
+    } catch (error) {
+      setWorkspaceError(error.message);
+    }
+  }
+
+  async function removeParticipant(userId) {
+    try {
+      const data = await request(`/rooms/${roomId}/participants/${userId}`, {
+        method: "DELETE",
+      });
+      setRoom(data.room);
+      setWorkspaceError("");
+    } catch (error) {
+      setWorkspaceError(error.message);
+    }
+  }
+
+  async function deleteRoom() {
+    if (!window.confirm("Are you sure you want to delete this room? This cannot be undone.")) return;
+    try {
+      await request(`/rooms/${roomId}`, { method: "DELETE" });
+      router.push(ROUTES.rooms);
     } catch (error) {
       setWorkspaceError(error.message);
     }
@@ -162,6 +189,8 @@ export function RoomWorkspace({ pathname, roomId }) {
               participants={participants}
               uploadedFile={uploadedFile}
               onUploadSent={() => setUploadedFile(null)}
+              messages={messages}
+              setMessages={setMessages}
             />
           )}
         </div>
@@ -209,6 +238,18 @@ export function RoomWorkspace({ pathname, roomId }) {
                       </Button>
                     </div>
                   ) : null}
+                  {canManageRoom && person.role !== "host" && person.status !== "waiting" ? (
+                    <div className="mt-3">
+                      <Button
+                        variant="secondary"
+                        className="inline-flex items-center gap-2 text-[#bf5460] border-[#bf5460]/30 hover:bg-[#bf5460]/10"
+                        onClick={() => removeParticipant(person.userId)}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                        Remove
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -231,6 +272,16 @@ export function RoomWorkspace({ pathname, roomId }) {
                   {participants.filter((participant) => participant.status === "admitted").length} admitted participants
                 </div>
               </div>
+              {canManageRoom ? (
+                <Button
+                  variant="secondary"
+                  className="inline-flex items-center justify-center gap-2 text-[#bf5460] border-[#bf5460]/30 hover:bg-[#bf5460]/10"
+                  onClick={deleteRoom}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Room
+                </Button>
+              ) : null}
             </div>
           </Card>
         </div>

@@ -51,9 +51,8 @@ function normalizeMessage(message, participants, currentUser) {
   };
 }
 
-export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent }) {
+export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, messages, setMessages }) {
   const { state, request, requestBlob } = useSessionState();
-  const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [chatError, setChatError] = useState("");
@@ -108,10 +107,14 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent }) 
       for await (const payload of channel) {
         if (cancelled) break;
         if (payload?.event) continue;
-        setMessages((current) => [
-          ...current,
-          normalizeMessage(payload, participants, currentUser),
-        ]);
+        setMessages((current) => {
+          // Prevent duplicates if history load and socket message overlap
+          if (current.some(m => m.id === payload._id || m.id === payload.id)) return current;
+          return [
+            ...current,
+            normalizeMessage(payload, participants, currentUser),
+          ];
+        });
       }
     }
 
