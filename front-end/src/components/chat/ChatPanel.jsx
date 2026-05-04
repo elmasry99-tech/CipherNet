@@ -12,10 +12,11 @@ import { getSocketClient } from "@/lib/socket";
 import { useSessionState } from "@/hooks/useSessionState";
 
 function normalizeMessage(message, participants, currentUser) {
-  const senderId = typeof message.senderId === "object" ? message.senderId?._id : message.senderId;
-  const senderName = typeof message.senderId === "object"
+  const rawId = message.senderId?._id || message.senderId;
+  const senderId = rawId?.toString();
+  const senderName = typeof message.senderId === "object" && message.senderId?.name
     ? message.senderId?.name
-    : (participants.find((participant) => participant.userId === senderId)?.name || (senderId === currentUser?.id ? "You" : "Participant"));
+    : (participants.find((p) => p.userId?.toString() === senderId)?.name || (senderId === currentUser?.id ? "You" : "Participant"));
 
   if (message.type === "file") {
     const content = JSON.parse(message.content);

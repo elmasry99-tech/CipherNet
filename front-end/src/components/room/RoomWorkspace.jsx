@@ -15,7 +15,8 @@ import { ROUTES } from "@/lib/routes";
 
 function normalizeParticipants(room, currentUser) {
   return (room.participants || []).map((participant) => {
-    const userId = typeof participant.userId === "object" ? participant.userId?._id : participant.userId;
+    const rawId = participant.userId?._id || participant.userId;
+    const userId = rawId?.toString();
     return {
       userId,
       name: participant.name || (userId === currentUser?.id ? currentUser.name : "Participant"),
@@ -74,10 +75,11 @@ export function RoomWorkspace({ pathname, roomId }) {
   );
 
   const canManageRoom = useMemo(() => {
+    if (!room || !state.user) return false;
     return state.role === "admin"
       || state.role === "oso"
-      || room?.hostId?.toString() === state.user?.id;
-  }, [room?.hostId, state.role, state.user?.id]);
+      || room.hostId?.toString() === state.user.id;
+  }, [room, state.role, state.user]);
 
   async function updateParticipantStatus(userId, status) {
     try {
@@ -93,6 +95,10 @@ export function RoomWorkspace({ pathname, roomId }) {
   }
 
   async function removeParticipant(userId) {
+    if (!userId) {
+      setWorkspaceError("User ID is missing. Cannot remove participant.");
+      return;
+    }
     try {
       const data = await request(`/rooms/${roomId}/participants/${userId}`, {
         method: "DELETE",
