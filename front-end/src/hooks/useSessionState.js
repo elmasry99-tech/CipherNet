@@ -107,6 +107,10 @@ async function request(path, options = {}) {
     headers.set("Content-Type", "application/json");
   }
 
+  if (!headers.has("Accept")) {
+    headers.set("Accept", "application/json");
+  }
+
   if (store.token) {
     headers.set("Authorization", `Bearer ${store.token}`);
   }
