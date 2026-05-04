@@ -208,38 +208,36 @@ export function useWebRTC({ token, roomId, currentUserId, participants }) {
   }
 
   async function ensureAudio() {
-    if (!localStreamRef.current) {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    let stream = localStreamRef.current;
+    
+    if (!stream) {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       localStreamRef.current = stream;
       cameraStreamRef.current = stream;
-      setLocalStream(stream);
-      setMuted(false);
-      return stream;
-    }
-
-    const hasAudio = localStreamRef.current.getAudioTracks().length > 0;
-    if (!hasAudio) {
+    } else if (stream.getAudioTracks().length === 0) {
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      const [audioTrack] = audioStream.getAudioTracks();
-      if (audioTrack) {
-        localStreamRef.current.addTrack(audioTrack);
-        peersRef.current.forEach((peer) => {
-          const sender = peer.getTransceivers().find(t => t.receiver?.track?.kind === "audio")?.sender;
-          if (sender) {
-            sender.replaceTrack(audioTrack);
-          } else {
-            peer.addTrack(audioTrack, localStreamRef.current);
-          }
-        });
+      const [newAudioTrack] = audioStream.getAudioTracks();
+      if (newAudioTrack) {
+        stream.addTrack(newAudioTrack);
       }
     }
 
-    localStreamRef.current.getAudioTracks().forEach((track) => {
-      track.enabled = true;
-    });
-    setLocalStream(localStreamRef.current);
+    const [audioTrack] = stream.getAudioTracks();
+    if (audioTrack) {
+      audioTrack.enabled = true;
+      peersRef.current.forEach((peer) => {
+        const sender = peer.getTransceivers().find(t => t.receiver?.track?.kind === "audio")?.sender;
+        if (sender) {
+          sender.replaceTrack(audioTrack);
+        } else {
+          peer.addTrack(audioTrack, stream);
+        }
+      });
+    }
+
+    setLocalStream(stream);
     setMuted(false);
-    return localStreamRef.current;
+    return stream;
   }
 
   async function toggleMic() {
@@ -264,6 +262,7 @@ export function useWebRTC({ token, roomId, currentUserId, participants }) {
       if (!localStreamRef.current || !cameraOn) {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: !localStreamRef.current });
         const videoTrack = stream.getVideoTracks()[0];
+        const audioTrack = stream.getAudioTracks()[0];
 
         if (!localStreamRef.current) {
           localStreamRef.current = stream;
@@ -280,6 +279,20 @@ export function useWebRTC({ token, roomId, currentUserId, participants }) {
               peer.addTrack(videoTrack, localStreamRef.current);
             }
           });
+        }
+        
+        if (audioTrack && !muted) {
+          peersRef.current.forEach((peer) => {
+            const sender = peer.getTransceivers().find(t => t.receiver?.track?.kind === "audio")?.sender;
+            if (sender) {
+              sender.replaceTrack(audioTrack);
+            } else {
+              peer.addTrack(audioTrack, localStreamRef.current);
+            }
+          });
+        } else if (audioTrack) {
+          // If we got an audio track but we are supposed to be muted, ensure it's disabled initially
+          audioTrack.enabled = false;
         }
 
         cameraStreamRef.current = stream;
