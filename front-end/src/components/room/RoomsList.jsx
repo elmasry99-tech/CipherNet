@@ -85,9 +85,14 @@ export function RoomsList({ pathname }) {
 
   async function handleJoinRoom() {
     try {
+      let code = joinCode.trim().toUpperCase();
+      if (!code.startsWith("CN-")) {
+        code = `CN-${code}`;
+      }
+
       const data = await request("/rooms/join", {
         method: "POST",
-        body: JSON.stringify({ code: joinCode.trim().toUpperCase() }),
+        body: JSON.stringify({ code }),
       });
 
       setRooms((current) => {

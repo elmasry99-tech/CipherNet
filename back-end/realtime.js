@@ -68,6 +68,7 @@ export function initRealtime(httpServer) {
       const user = verifySocketUser(socket);
       socket.user = user;
 
+      // Message: Send
       (async () => {
         for await (const request of socket.procedure('message:send')) {
           try {
@@ -81,14 +82,17 @@ export function initRealtime(httpServer) {
               continue;
             }
 
-            // Ephemeral: broadcast without storing in DB
+            const message = await Message.create({ roomId, senderId: user.id, content, type });
+            const populated = await message.populate('senderId', 'name email role');
+
             const payload = {
-              id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+              id: populated._id.toString(),
               roomId,
-              senderId: user.id,
-              content,
-              type,
-              createdAt: new Date().toISOString(),
+              senderId: populated.senderId._id.toString(),
+              senderName: populated.senderId.name,
+              content: populated.content,
+              type: populated.type,
+              createdAt: populated.createdAt.toISOString(),
             };
 
             agServer.exchange.transmitPublish(`room-${roomId}`, payload);
@@ -99,6 +103,76 @@ export function initRealtime(httpServer) {
         }
       })();
 
+      // Message: Delete
+      (async () => {
+        for await (const request of socket.procedure('message:delete')) {
+          try {
+            const { messageId } = request.data || {};
+            if (!messageId) {
+              sendError(request, 'messageId is required');
+              continue;
+            }
+            const message = await Message.findById(messageId);
+            if (!message) {
+              sendError(request, 'Message not found');
+              continue;
+            }
+
+            const room = await Room.findById(message.roomId);
+            const canManage = user.role === 'admin' || user.role === 'oso' || room.hostId?.toString() === user.id;
+            const isSender = message.senderId?.toString() === user.id;
+
+            if (!canManage && !isSender) {
+              sendError(request, 'Not authorized');
+              continue;
+            }
+
+            await Message.findByIdAndDelete(messageId);
+            agServer.exchange.transmitPublish(`room-${message.roomId}`, {
+              event: 'message:delete',
+              messageId,
+            });
+            sendAck(request, { messageId });
+          } catch (err) {
+            sendError(request, err.message);
+          }
+        }
+      })();
+
+      // Message: Clear
+      (async () => {
+        for await (const request of socket.procedure('message:clear')) {
+          try {
+            const { roomId } = request.data || {};
+            if (!roomId) {
+              sendError(request, 'roomId is required');
+              continue;
+            }
+            const room = await Room.findById(roomId);
+            if (!room) {
+              sendError(request, 'Room not found');
+              continue;
+            }
+
+            const canManage = user.role === 'admin' || user.role === 'oso' || room.hostId?.toString() === user.id;
+            if (!canManage) {
+              sendError(request, 'Not authorized');
+              continue;
+            }
+
+            await Message.deleteMany({ roomId });
+            agServer.exchange.transmitPublish(`room-${roomId}`, {
+              event: 'message:clear',
+              roomId,
+            });
+            sendAck(request, { roomId });
+          } catch (err) {
+            sendError(request, err.message);
+          }
+        }
+      })();
+
+      // User: Typing
       (async () => {
         for await (const data of socket.receiver('user:typing')) {
           const { roomId, isTyping = true } = data || {};
@@ -112,6 +186,7 @@ export function initRealtime(httpServer) {
         }
       })();
 
+      // Presence
       (async () => {
         for await (const data of socket.receiver('presence')) {
           const { roomId, state = 'online' } = data || {};

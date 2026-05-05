@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Paperclip, Send } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -18,29 +18,33 @@ function normalizeMessage(message, participants, currentUser) {
     ? message.senderId?.name
     : (participants.find((p) => p.userId?.toString() === senderId)?.name || (senderId === currentUser?.id ? "You" : "Participant"));
 
-  if (message.type === "file") {
-    const content = JSON.parse(message.content);
-    return {
-      id: message._id || message.id,
-      type: "file",
-      author: senderId === currentUser?.id ? "You" : senderName,
-      time: formatTimestamp(message.createdAt),
-      fileId: content.fileId,
-      fileName: content.fileName,
-      fileType: content.fileType,
-    };
-  }
+  try {
+    if (message.type === "file") {
+      const content = typeof message.content === "string" ? JSON.parse(message.content) : message.content;
+      return {
+        id: message._id || message.id,
+        type: "file",
+        author: senderId === currentUser?.id ? "You" : senderName,
+        time: formatTimestamp(message.createdAt),
+        fileId: content.fileId,
+        fileName: content.fileName,
+        fileType: content.fileType,
+      };
+    }
 
-  if (message.type === "steg") {
-    const content = JSON.parse(message.content);
-    return {
-      id: message._id || message.id,
-      type: "steg",
-      author: senderId === currentUser?.id ? "You" : senderName,
-      time: formatTimestamp(message.createdAt),
-      imageUrl: content.imageUrl,
-      fileId: content.fileId,
-    };
+    if (message.type === "steg") {
+      const content = typeof message.content === "string" ? JSON.parse(message.content) : message.content;
+      return {
+        id: message._id || message.id,
+        type: "steg",
+        author: senderId === currentUser?.id ? "You" : senderName,
+        time: formatTimestamp(message.createdAt),
+        imageUrl: content.imageUrl,
+        fileId: content.fileId,
+      };
+    }
+  } catch (e) {
+    console.error("Failed to parse complex message content", e);
   }
 
   return {
@@ -69,38 +73,24 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
     [currentUser?.id, participants],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadHistory() {
-      try {
-        setLoading(true);
-        const data = await request(`/messages/${roomId}`);
-        if (!cancelled) {
-          setMessages((data.messages || []).map((message) => normalizeMessage(message, participantsRef.current, currentUserRef.current)));
-          setChatError("");
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setChatError(error.message);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
+  const loadHistory = useCallback(async () => {
+    if (!roomId) return;
+    try {
+      setLoading(true);
+      const data = await request(`/messages/${roomId}`);
+      setMessages((data.messages || []).map((message) => normalizeMessage(message, participantsRef.current, currentUserRef.current)));
+      setChatError("");
+    } catch (error) {
+      setChatError(error.message);
+    } finally {
+      setLoading(false);
     }
-
-    loadHistory();
-    return () => {
-      cancelled = true;
-    };
-  }, [request, roomId]);
+  }, [request, roomId, setMessages]);
 
   useEffect(() => {
-    if (!state.hydrated || !state.isAuthenticated || !roomId) return undefined;
+    if (!state.hydrated || !state.isAuthenticated || !roomId) return;
     loadHistory();
-  }, [roomId, state.hydrated, state.isAuthenticated]);
+  }, [roomId, state.hydrated, state.isAuthenticated, loadHistory]);
 
   async function sendTextMessage() {
     const trimmed = draft.trim();
@@ -168,6 +158,16 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
       if (message.fileId) {
         const blob = await requestBlob(`/files/${message.fileId}`);
         setRevealBlob(blob);
+        
+        // AUTO-DELETE after reveal: delete from server
+        try {
+          await request(`/files/${message.fileId}`, { method: "DELETE" });
+          // Also delete the message itself from history
+          const socket = getSocketClient(state.token);
+          await socket.invoke("message:delete", { messageId: message.id });
+        } catch (e) {
+          console.error("Auto-delete failed", e);
+        }
       } else if (message.imageUrl) {
         const response = await fetch(message.imageUrl);
         const blob = await response.blob();
@@ -175,6 +175,17 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
       }
     } catch {
       setChatError("Could not load the steg image.");
+    }
+  }
+
+  async function clearChat() {
+    if (!window.confirm("Are you sure you want to clear all messages in this room?")) return;
+    try {
+      const socket = getSocketClient(state.token);
+      await socket.invoke("message:clear", { roomId });
+      setChatError("");
+    } catch (error) {
+      setChatError(error.message);
     }
   }
 
@@ -212,6 +223,14 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
 
   return (
     <Card className="flex h-full flex-col p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-sm font-medium text-[var(--text-main)]">Room Conversation</p>
+        {(state.role === "admin" || state.role === "oso" || participants.find(p => p.userId === state.user?.id)?.role === "host") && (
+          <Button variant="muted" size="sm" onClick={clearChat} className="h-8 text-xs">
+            Clear Chat
+          </Button>
+        )}
+      </div>
       <div className="flex-1 space-y-4 overflow-x-hidden">
         {loading ? <p className="text-sm text-[var(--text-soft)]">Loading conversation...</p> : null}
         {messages.map((message) => {
@@ -220,7 +239,7 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
               <StegMessage
                 key={message.id}
                 message={message}
-                canReveal
+                canReveal={message.author !== "You"}
                 onReveal={() => revealMessage(message)}
                 requestBlob={requestBlob}
               />

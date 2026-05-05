@@ -116,9 +116,20 @@ export function RoomWorkspace({ pathname, roomId }) {
     (async () => {
       for await (const payload of channel) {
         if (cancelled) break;
+
+        if (payload.event === "message:delete") {
+          setMessages((current) => current.filter((m) => m.id !== payload.messageId));
+          continue;
+        }
+
+        if (payload.event === "message:clear") {
+          setMessages([]);
+          continue;
+        }
+
         if (payload?.type) {
           setMessages((current) => {
-            const exists = current.some(m => m.id === payload._id || m.id === payload.id);
+            const exists = current.some((m) => m.id === payload._id || m.id === payload.id);
             if (exists) return current;
             return [...current, normalizeMessage(payload, participantsRef.current, state.user)];
           });

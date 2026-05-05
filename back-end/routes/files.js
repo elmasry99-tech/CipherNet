@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import File from '../models/File.js';
 import Room from '../models/Room.js';
@@ -73,6 +74,27 @@ router.get('/:id', requireAuth, async (req, res) => {
     if (!allowed) return res.status(403).json({ error: 'Not authorized' });
 
     res.download(file.path, file.originalName);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid file id' });
+    const file = await File.findById(req.params.id);
+    if (!file) return res.status(404).json({ error: 'File not found' });
+
+    const allowed = await canUseRoom(req.user, file.roomId);
+    if (!allowed) return res.status(403).json({ error: 'Not authorized' });
+
+    // Delete from filesystem
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+
+    await File.findByIdAndDelete(req.params.id);
+    res.json({ message: 'File deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

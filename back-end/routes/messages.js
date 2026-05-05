@@ -66,4 +66,45 @@ router.post('/', requireAuth, async (req, res) => {
   }
 });
 
+router.delete('/room/:roomId', requireAuth, async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.roomId)) return res.status(400).json({ error: 'Invalid room id' });
+    const { allowed, status } = await canAccessRoom(req.user, req.params.roomId);
+    if (!allowed) return res.status(status).json({ error: 'Not authorized' });
+
+    // Only host/admin/oso can clear entire chat
+    const room = await Room.findById(req.params.roomId);
+    const canManage = req.user.role === 'admin' || req.user.role === 'oso' || room.hostId?.toString() === req.user.id;
+    if (!canManage) return res.status(403).json({ error: 'Only hosts and security officers can clear chat history' });
+
+    await Message.deleteMany({ roomId: req.params.roomId });
+    res.json({ message: 'Chat history cleared' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) return res.status(400).json({ error: 'Invalid message id' });
+    const message = await Message.findById(req.params.id);
+    if (!message) return res.status(404).json({ error: 'Message not found' });
+
+    const { allowed } = await canAccessRoom(req.user, message.roomId);
+    if (!allowed) return res.status(403).json({ error: 'Not authorized' });
+
+    // Can delete if sender OR if can manage room
+    const room = await Room.findById(message.roomId);
+    const canManage = req.user.role === 'admin' || req.user.role === 'oso' || room.hostId?.toString() === req.user.id;
+    const isSender = message.senderId?.toString() === req.user.id;
+
+    if (!canManage && !isSender) return res.status(403).json({ error: 'Not authorized to delete this message' });
+
+    await Message.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Message deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
