@@ -1,96 +1,28 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Paperclip, Send } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StegMessage } from "@/components/chat/StegMessage";
 import { StegRevealModal } from "@/components/chat/StegRevealModal";
 import { StegSendButton } from "@/components/chat/StegSendButton";
-import { formatTimestamp, readJsonResponse, fileToDataUrl, buildBackendUrl } from "@/lib/api";
+import { readJsonResponse, buildBackendUrl } from "@/lib/api";
 import { getSocketClient } from "@/lib/socket";
 import { useSessionState } from "@/hooks/useSessionState";
 
-function normalizeMessage(message, participants, currentUser) {
-  const rawId = message.senderId?._id || message.senderId;
-  const senderId = rawId?.toString();
-  const senderName = typeof message.senderId === "object" && message.senderId?.name
-    ? message.senderId?.name
-    : (participants.find((p) => p.userId?.toString() === senderId)?.name || (senderId === currentUser?.id ? "You" : "Participant"));
-
-  try {
-    if (message.type === "file") {
-      const content = typeof message.content === "string" ? JSON.parse(message.content) : message.content;
-      return {
-        id: message._id || message.id,
-        type: "file",
-        author: senderId === currentUser?.id ? "You" : senderName,
-        time: formatTimestamp(message.createdAt),
-        fileId: content.fileId,
-        fileName: content.fileName,
-        fileType: content.fileType,
-      };
-    }
-
-    if (message.type === "steg") {
-      const content = typeof message.content === "string" ? JSON.parse(message.content) : message.content;
-      return {
-        id: message._id || message.id,
-        type: "steg",
-        author: senderId === currentUser?.id ? "You" : senderName,
-        time: formatTimestamp(message.createdAt),
-        imageUrl: content.imageUrl,
-        fileId: content.fileId,
-      };
-    }
-  } catch (e) {
-    console.error("Failed to parse complex message content", e);
-  }
-
-  return {
-    id: message._id || message.id,
-    type: message.type || "text",
-    author: senderId === currentUser?.id ? "You" : senderName,
-    time: formatTimestamp(message.createdAt),
-    body: message.content,
-  };
-}
 
 export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, messages, setMessages }) {
   const { state, request, requestBlob } = useSessionState();
   const [draft, setDraft] = useState("");
-  const [loading, setLoading] = useState(true);
   const [chatError, setChatError] = useState("");
   const [revealBlob, setRevealBlob] = useState(null);
   const currentUser = state.user;
-  const currentUserRef = useRef(currentUser);
-  const participantsRef = useRef(participants);
-  currentUserRef.current = currentUser;
-  participantsRef.current = participants;
-
   const receiver = useMemo(
     () => participants.find((participant) => participant.userId && participant.userId !== currentUser?.id && participant.status === "admitted"),
     [currentUser?.id, participants],
   );
 
-  const loadHistory = useCallback(async () => {
-    if (!roomId) return;
-    try {
-      setLoading(true);
-      const data = await request(`/messages/${roomId}`);
-      setMessages((data.messages || []).map((message) => normalizeMessage(message, participantsRef.current, currentUserRef.current)));
-      setChatError("");
-    } catch (error) {
-      setChatError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [request, roomId, setMessages]);
-
-  useEffect(() => {
-    if (!state.hydrated || !state.isAuthenticated || !roomId) return;
-    loadHistory();
-  }, [roomId, state.hydrated, state.isAuthenticated, loadHistory]);
 
   async function sendTextMessage() {
     const trimmed = draft.trim();
@@ -181,8 +113,8 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
   async function clearChat() {
     if (!window.confirm("Are you sure you want to clear all messages in this room?")) return;
     try {
-      const socket = getSocketClient(state.token);
-      await socket.invoke("message:clear", { roomId });
+      await request(`/messages/room/${roomId}`, { method: "DELETE" });
+      setMessages([]);
       setChatError("");
     } catch (error) {
       setChatError(error.message);
@@ -232,7 +164,6 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
         )}
       </div>
       <div className="flex-1 space-y-4 overflow-x-hidden">
-        {loading ? <p className="text-sm text-[var(--text-soft)]">Loading conversation...</p> : null}
         {messages.map((message) => {
           if (message.type === "steg") {
             return (

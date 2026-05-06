@@ -110,6 +110,18 @@ export function RoomWorkspace({ pathname, roomId }) {
 
     loadRoom(true);
 
+    async function loadMessages() {
+      try {
+        const data = await request(`/messages/${roomId}`);
+        if (!cancelled) {
+          setMessages((data.messages || []).map((msg) => normalizeMessage(msg, participantsRef.current, state.user)));
+        }
+      } catch {
+        // Silent — new messages still arrive via WebSocket
+      }
+    }
+    loadMessages();
+
     const socket = getSocketClient(state.token);
     const channel = socket.subscribe(`room-${roomId}`);
 

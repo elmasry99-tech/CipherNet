@@ -3,6 +3,7 @@ import Message from '../models/Message.js';
 import Room from '../models/Room.js';
 import { requireAuth } from '../middleware/auth.js';
 import { isNonEmptyString, isValidObjectId, parsePositiveInteger } from '../lib/validation.js';
+import { getAgServer } from '../realtime.js';
 
 const router = express.Router();
 
@@ -78,6 +79,13 @@ router.delete('/room/:roomId', requireAuth, async (req, res) => {
     if (!canManage) return res.status(403).json({ error: 'Only hosts and security officers can clear chat history' });
 
     await Message.deleteMany({ roomId: req.params.roomId });
+    const agServer = getAgServer();
+    if (agServer) {
+      agServer.exchange.transmitPublish(`room-${req.params.roomId}`, {
+        event: 'message:clear',
+        roomId: req.params.roomId,
+      });
+    }
     res.json({ message: 'Chat history cleared' });
   } catch (err) {
     res.status(500).json({ error: err.message });

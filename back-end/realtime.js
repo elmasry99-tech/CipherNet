@@ -39,10 +39,17 @@ function sendError(request, message) {
   request.error(error);
 }
 
+let _agServer = null;
+
+export function getAgServer() {
+  return _agServer;
+}
+
 export function initRealtime(httpServer) {
   const agServer = socketClusterServer.attach(httpServer, {
     path: '/socketcluster/',
   });
+  _agServer = agServer;
 
   agServer.setMiddleware(agServer.MIDDLEWARE_INBOUND, async (middlewareStream) => {
     for await (const action of middlewareStream) {
