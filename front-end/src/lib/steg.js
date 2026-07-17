@@ -70,6 +70,7 @@ export async function extractFromImage(imageBlob) {
       const pixelIdx = Math.floor(globalBit / 3);
       const ch = globalBit % 3;
       const pxOffset = pixelIdx * 4 + ch;
+      if (pxOffset >= pixels.length) throw new Error("Image too small to extract data");
       const bit = pixels[pxOffset] & 1;
       const bytePos = Math.floor(i / 8);
       const bitPos = 7 - (i % 8);
@@ -80,7 +81,10 @@ export async function extractFromImage(imageBlob) {
 
   // Read the 4-byte length header (32 bits)
   const header = readBits(0, 32);
-  const len = (header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3];
+  const len = ((header[0] << 24) | (header[1] << 16) | (header[2] << 8) | header[3]) >>> 0;
+
+  const maxBytes = Math.floor((pixels.length / 4) * 3 / 8) - 4;
+  if (len <= 0 || len > maxBytes) throw new Error("No valid hidden data found in image");
 
   return readBits(32, len * 8);
 }
