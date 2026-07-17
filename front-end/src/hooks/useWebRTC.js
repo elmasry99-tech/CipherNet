@@ -118,7 +118,7 @@ export function useWebRTC({ token, roomId, currentUserId, participants }) {
       }
     }
 
-    watchChannel();
+    watchChannel().catch((err) => console.warn("[useWebRTC] channel error:", err.message));
 
     socket.transmit("presence", { roomId, state: "online" });
 

@@ -207,7 +207,7 @@ export function initRealtime(httpServer) {
         }
       })();
     }
-  })();
+  })().catch((err) => console.error('[realtime] connection loop error:', err));
 
   return agServer;
 }

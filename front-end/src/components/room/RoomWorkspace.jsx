@@ -35,28 +35,36 @@ function normalizeMessage(message, participants, currentUser) {
     : (participants.find((p) => p.userId?.toString() === senderId)?.name || (senderId === currentUser?.id ? "You" : "Participant"));
 
   if (message.type === "file") {
-    const content = JSON.parse(message.content);
-    return {
-      id: message._id || message.id,
-      type: "file",
-      author: senderId === currentUser?.id ? "You" : senderName,
-      time: new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(message.createdAt || Date.now())),
-      fileId: content.fileId,
-      fileName: content.fileName,
-      fileType: content.fileType,
-    };
+    try {
+      const content = JSON.parse(message.content);
+      return {
+        id: message._id || message.id,
+        type: "file",
+        author: senderId === currentUser?.id ? "You" : senderName,
+        time: new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(message.createdAt || Date.now())),
+        fileId: content.fileId,
+        fileName: content.fileName,
+        fileType: content.fileType,
+      };
+    } catch {
+      return { id: message._id || message.id, type: "text", author: senderId === currentUser?.id ? "You" : senderName, time: new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(message.createdAt || Date.now())), body: "[corrupted file message]" };
+    }
   }
 
   if (message.type === "steg") {
-    const content = JSON.parse(message.content);
-    return {
-      id: message._id || message.id,
-      type: "steg",
-      author: senderId === currentUser?.id ? "You" : senderName,
-      time: new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(message.createdAt || Date.now())),
-      imageUrl: content.imageUrl,
-      fileId: content.fileId,
-    };
+    try {
+      const content = JSON.parse(message.content);
+      return {
+        id: message._id || message.id,
+        type: "steg",
+        author: senderId === currentUser?.id ? "You" : senderName,
+        time: new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(message.createdAt || Date.now())),
+        imageUrl: content.imageUrl,
+        fileId: content.fileId,
+      };
+    } catch {
+      return { id: message._id || message.id, type: "text", author: senderId === currentUser?.id ? "You" : senderName, time: new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date(message.createdAt || Date.now())), body: "[corrupted steg message]" };
+    }
   }
 
   return {

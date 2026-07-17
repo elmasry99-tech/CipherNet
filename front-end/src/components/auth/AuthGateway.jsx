@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { roles } from "@/features/auth/index";
 import { BrandMark } from "@/components/common/BrandMark";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useSessionState } from "@/hooks/useSessionState";
+import { buildBackendUrl } from "@/lib/api";
 import { ROUTES, getDefaultRouteForRole, getRoomRoute } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +46,6 @@ export function AuthGateway() {
   const [selectedRole, setSelectedRole] = useState("internal");
   const [organizations, setOrganizations] = useState([]);
   const [organizationQuery, setOrganizationQuery] = useState("");
-  const [showOrganizationMenu, setShowOrganizationMenu] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -64,22 +64,12 @@ export function AuthGateway() {
     [],
   );
 
-  const filteredOrganizations = useMemo(() => {
-    return organizations.filter((organization) =>
-      organization.name.toLowerCase().includes(organizationQuery.toLowerCase()),
-    );
-  }, [organizationQuery, organizations]);
-
-  const selectedOrganization = organizations.find(
-    (organization) => organization.name.toLowerCase() === organizationQuery.trim().toLowerCase(),
-  );
-
   useEffect(() => {
     let cancelled = false;
 
     async function loadOrganizations() {
       try {
-        const response = await fetch("/orgs/public");
+        const response = await fetch(buildBackendUrl("/orgs/public"));
         const data = await response.json();
         if (!cancelled) {
           setOrganizations(data.organizations || []);

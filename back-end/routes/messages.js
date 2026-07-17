@@ -11,15 +11,6 @@ async function canAccessRoom(user, roomId) {
   const room = await Room.findById(roomId);
   if (!room) return { allowed: false, room: null, status: 404 };
   const participant = room.participants.find((entry) => entry.userId?.toString() === user.id);
-  console.log('[canAccessRoom]', {
-    userId: user.id,
-    userIdType: typeof user.id,
-    hostId: room.hostId?.toString(),
-    hostMatch: room.hostId?.toString() === user.id,
-    participantFound: !!participant,
-    participantStatus: participant?.status,
-    role: user.role,
-  });
   const allowed = user.role === 'admin'
     || room.hostId?.toString() === user.id
     || participant?.status === 'admitted'
