@@ -78,7 +78,7 @@ function normalizeMessage(message, participants, currentUser) {
 
 export function RoomWorkspace({ pathname, roomId }) {
   const router = useRouter();
-  const { state, request, toggleRoomLock, setCallView, signOut } = useSessionState();
+  const { state, request, setCallView, signOut } = useSessionState();
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [workspaceError, setWorkspaceError] = useState("");
@@ -267,9 +267,6 @@ export function RoomWorkspace({ pathname, roomId }) {
             </div>
             <div className="flex items-center gap-2">
               <StatusPill tone={room.status === "open" ? "active" : "warning"}>{room.status}</StatusPill>
-              <Button variant="muted" onClick={toggleRoomLock}>
-                {state.roomLocked ? "Unlock Room" : "Lock Room"}
-              </Button>
             </div>
           </div>
 

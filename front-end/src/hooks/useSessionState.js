@@ -12,7 +12,6 @@ const defaultState = {
   user: null,
   signupPendingRole: null,
   roomId: null,
-  roomLocked: false,
   callView: "chat",
   guestStep: "verify",
   officerSection: "Policies",
@@ -40,7 +39,6 @@ function persistStore() {
     user: store.user,
     signupPendingRole: store.signupPendingRole,
     roomId: store.roomId,
-    roomLocked: store.roomLocked,
     callView: store.callView,
     guestStep: store.guestStep,
     officerSection: store.officerSection,
@@ -220,10 +218,6 @@ export function useSessionState() {
 
     setRoom(roomId) {
       updateStore({ roomId });
-    },
-
-    toggleRoomLock() {
-      updateStore((current) => ({ roomLocked: !current.roomLocked }));
     },
 
     setCallView(callView) {

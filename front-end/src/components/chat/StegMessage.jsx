@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Eye } from "lucide-react";
+import { Eye, ImagePlus } from "lucide-react";
 
 export function StegMessage({ message, canReveal, onReveal, requestBlob }) {
   const [src, setSrc] = useState(message.imageUrl || "");
@@ -21,6 +21,10 @@ export function StegMessage({ message, canReveal, onReveal, requestBlob }) {
     <div className="max-w-full sm:max-w-[460px]">
       <p className="mb-1 px-3 text-xs text-[var(--text-soft)]">{message.author}</p>
       <div className="rounded-[18px] border border-[var(--border-light)] bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+        <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent-strong)]">
+          <ImagePlus className="h-3.5 w-3.5" />
+          Steg
+        </div>
         {src ? (
           <Image
             src={src}

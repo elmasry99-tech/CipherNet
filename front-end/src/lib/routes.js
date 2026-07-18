@@ -8,7 +8,6 @@ export const ROUTES = {
   adminPlatform: "/admin/platform",
   adminPlatformNew: "/admin/platform/new",
   adminOrganization: "/admin/organization",
-  reports: "/reports",
   profile: "/profile",
 };
 

@@ -27,19 +27,16 @@ export const ROLE_DESCRIPTIONS = {
 export const APP_NAV = {
   admin: [
     { label: "Dashboard", href: ROUTES.adminPlatform },
-    { label: "Reports", href: ROUTES.reports },
     { label: "Profile", href: ROUTES.profile },
   ],
   oso: [
     { label: "Dashboard", href: ROUTES.dashboard },
     { label: "Organization", href: ROUTES.adminOrganization },
-    { label: "Reports", href: ROUTES.reports },
     { label: "Profile", href: ROUTES.profile },
   ],
   internal: [
     { label: "Dashboard", href: ROUTES.dashboard },
     { label: "Rooms", href: ROUTES.rooms },
-    { label: "Reports", href: ROUTES.reports },
     { label: "Profile", href: ROUTES.profile },
   ],
   guest: [

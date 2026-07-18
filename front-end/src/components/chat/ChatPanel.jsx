@@ -90,7 +90,8 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
       if (message.fileId) {
         const blob = await requestBlob(`/files/${message.fileId}`);
         setRevealBlob(blob);
-        
+        setMessages((current) => current.filter((m) => m.id !== message.id));
+
         // AUTO-DELETE after reveal: delete from server
         try {
           await request(`/files/${message.fileId}`, { method: "DELETE" });
@@ -104,6 +105,7 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
         const response = await fetch(message.imageUrl);
         const blob = await response.blob();
         setRevealBlob(blob);
+        setMessages((current) => current.filter((m) => m.id !== message.id));
       }
     } catch {
       setChatError("Could not load the steg image.");
@@ -154,7 +156,7 @@ export function ChatPanel({ roomId, participants, uploadedFile, onUploadSent, me
   }
 
   return (
-    <Card className="flex h-full flex-col p-6">
+    <Card className="flex flex-col p-6">
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm font-medium text-[var(--text-main)]">Room Conversation</p>
         {(state.role === "admin" || state.role === "oso" || participants.find(p => p.userId === state.user?.id)?.role === "host") && (

@@ -27,9 +27,14 @@ async function proxy(req: NextRequest) {
   const upstream = await fetch(url, init);
 
   const responseHeaders = new Headers(upstream.headers);
-  // Remove encoding header to avoid double-encoding
+  // fetch() transparently decompresses the body, so the original
+  // content-encoding/content-length (which describe the compressed
+  // bytes) no longer match what we're actually sending — drop them
+  // so the client doesn't truncate the response waiting for a byte
+  // count that refers to the pre-decompression size.
   responseHeaders.delete("content-encoding");
   responseHeaders.delete("transfer-encoding");
+  responseHeaders.delete("content-length");
 
   return new NextResponse(upstream.body, {
     status: upstream.status,

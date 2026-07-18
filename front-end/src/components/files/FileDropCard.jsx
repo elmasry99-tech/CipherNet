@@ -29,11 +29,14 @@ export function FileDropCard({ title, subtitle, uploadedFile, onUpload, onSend }
         <Upload className="h-4 w-4" />
         {title}
       </div>
-      <label className="flex h-[132px] cursor-pointer flex-col items-center justify-center rounded-[18px] border border-dashed border-[rgba(23,147,170,0.35)] bg-white text-center">
-        <Paperclip className="h-7 w-7 text-[var(--accent-strong)]" />
-        <p className="mt-3 text-sm font-medium text-[var(--text-main)]">Upload secure attachment</p>
-        <p className="mt-1 text-xs text-[var(--text-soft)]">{subtitle}</p>
-        {uploadedFile ? <p className="mt-2 text-xs text-[var(--accent-strong)]">{uploadedFile.name}</p> : null}
+      <label className="flex cursor-pointer items-center gap-3 rounded-[18px] border border-dashed border-[rgba(23,147,170,0.35)] bg-white px-4 py-3 text-left">
+        <Paperclip className="h-5 w-5 shrink-0 text-[var(--accent-strong)]" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-[var(--text-main)]">
+            {uploadedFile ? uploadedFile.name : "Upload secure attachment"}
+          </p>
+          <p className="truncate text-xs text-[var(--text-soft)]">{subtitle}</p>
+        </div>
         <input type="file" className="hidden" onChange={(event) => handleFileChange(event.target.files?.[0])} />
       </label>
       {uploadedFile ? (

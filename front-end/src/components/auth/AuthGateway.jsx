@@ -417,7 +417,7 @@ export function AuthGateway() {
             {successMessage ? <p className="text-sm text-emerald-600">{successMessage}</p> : null}
 
             <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Please wait..." : mode === "login" ? "Enter Workspace" : "Submit Request"}
+              {submitting ? "Please wait..." : mode === "login" ? "Login" : "Sign Up"}
             </Button>
           </form>
         </Card>
